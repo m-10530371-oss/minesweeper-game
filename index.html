@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扫雷游戏 - Bryan Lye</title> <!-- 标题也加上作者名 -->
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+        }
+        #start-page, #game-page {
+            display: none; /* 初始隐藏游戏页面 */
+            flex-direction: column;
+            align-items: center;
+        }
+        #start-page {
+            display: flex; /* 初始显示开始页面 */
+        }
+        .mode-selection {
+            display: flex;
+            flex-direction: column; /* 让按钮垂直排列 */
+        }
+        .mode-button {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s ease;
+            min-width: 250px; /* 确保按钮有足够的宽度来容纳翻译 */
+            text-align: center;
+        }
+        .mode-button:hover {
+            background-color: #0056b3;
+        }
+
+        #author-info {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 20px; /* 给游戏信息栏留出空间 */
+        }
+
+        #game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center; /* 垂直居中 */
+            width: 100%;
+            max-width: fit-content; /* 让信息栏宽度适应内容 */
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+            gap: 20px; /* 增加计时器和旗帜计数之间的间距 */
+        }
+        #timer, #flag-count {
+            padding: 5px 10px;
+            background-color: #ccc;
+            border-radius: 3px;
+        }
+
+        #game-container {
+            display: grid;
+            border: 2px solid #333;
+            background-color: #bbb;
+            /* width 和 height 会由JS动态设置 */
+        }
+        .cell {
+            /* 默认宽度和高度，会在JS中根据模式调整 */
+            width: var(--cell-size, 30px);
+            height: var(--cell-size, 30px);
+            border: 1px solid #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+            cursor: pointer;
+            background-color: #eee;
+            user-select: none; /* 防止文本被选中 */
+            box-sizing: border-box; /* 确保边框计算在尺寸内 */
+        }
+        .cell.revealed {
+            background-color: #ddd;
+            cursor: default;
+        }
+        .cell.bomb {
+            background-color: #f44;
+            color: white;
+        }
+        .cell.flag {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 0.8em;
+        }
+        /* New style for incorrectly flagged cells */
+        .cell.incorrect-flag {
+            background-color: #ff9900; /* Orange background for incorrect flags */
+            color: white;
+        }
+        .cell.number-1 { color: blue; }
+        .cell.number-2 { color: green; }
+        .cell.number-3 { color: red; }
+        .cell.number-4 { color: darkblue; }
+        .cell.number-5 { color: darkred; }
+        .cell.number-6 { color: teal; }
+        .cell.number-7 { color: black; }
+        .cell.number-8 { color: gray; }
+        #message {
+            margin-top: 20px;
+            font-size: 1.5em;
+            color: #333;
+            text-align: center; /* 确保消息居中 */
+        }
+        button#reset-button, button#back-to-menu {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #6c757d;
+            color: white;
+            transition: background-color 0.3s ease;
+            margin-left: 5px; /* Add some spacing between buttons */
+            margin-right: 5px;
+        }
+        button#reset-button:hover, button#back-to-menu:hover {
+            background-color: #5a6268;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .mode-button {
+                min-width: unset; /* 移除最小宽度限制，让按钮宽度自适应 */
+                width: 80%; /* 手机上按钮占据大部分宽度 */
+            }
+            #game-info {
+                flex-direction: column; /* 在小屏幕上垂直排列信息 */
+                gap: 5px;
+                margin-bottom: 5px;
+            }
+            #toggle-flag-mode {
+                width: 80%;
+                margin: 10px auto; /* 居中显示 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="start-page">
+        <h1>选择游戏模式<br>Select Game Mode</h1>
+        <p id="author-info" style="margin-top: -10px;">by Bryan Lye</p>
+        <div class="mode-selection">
+            <button class="mode-button" data-mode="easy">简单 (10x10, 10 雷) <br>Easy (10x10, 10 Mines)</button>
+            <button class="mode-button" data-mode="normal">普通 (16x16, 35 雷) <br>Normal (16x16, 35 Mines)</button>
+            <button class="mode-button" data-mode="hard">困难 (25x25, 88 雷) <br>Hard (25x25, 88 Mines)</button>
+        </div>
+    </div>
+
+    <div id="game-page">
+        <h1>扫雷<br>Minesweeper</h1>
+        <p id="author-info" style="margin-top: -10px;">by Bryan Lye</p>
+        <div id="game-info">
+            <span id="flag-count">🚩 0 / 0</span>
+            <span id="timer">⏱ 00:00</span>
+        </div>
+        <!-- toggleFlagModeButton will be inserted by JS here, after game-info -->
+        <div id="game-container"></div>
+        <div id="message"></div>
+        <div> <!-- Wrap buttons for better layout -->
+            <button id="reset-button">重新开始 / Reset</button>
+            <button id="back-to-menu">返回菜单 / Back to Menu</button>
+        </div>
+    </div>
+
+    <script src="minesweeper.js"></script>
+</body>
+</html>
