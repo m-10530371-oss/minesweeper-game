@@ -1,12 +1,13 @@
 // --- 游戏配置 ---
 const MODES = {
-    easy: { gridSize: 10, bombCount: 10, cellSize: 30, nameZh: "简单", nameEn: "Easy" }, // 10x10, 10 雷
-    normal: { gridSize: 16, bombCount: 35, cellSize: 25, nameZh: "普通", nameEn: "Normal" }, // 16x16, 35 雷 (单元格大小调整以适应)
-    hard: { gridSize: 25, bombCount: 88, cellSize: 20, nameZh: "困难", nameEn: "Hard" }   // 25x25, 88 雷 (单元格更小，适应25x25)
+    easy: { gridSizeX: 10, gridSizeY: 10, bombCount: 10, cellSize: 30, nameZh: "简单", nameEn: "Easy" }, // 10x10, 10 雷
+    normal: { gridSizeX: 14, gridSizeY: 20, bombCount: 40, cellSize: 25, nameZh: "普通", nameEn: "Normal" }, // 14x20, 40 雷
+    hard: { gridSizeX: 14, gridSizeY: 32, bombCount: 99, cellSize: 20, nameZh: "困难", nameEn: "Hard" }   // 14x32, 99 雷
 };
 
 let currentMode = MODES.easy; // 默认模式
-let GRID_SIZE;
+let GRID_SIZE_X; // X轴（列）的尺寸
+let GRID_SIZE_Y; // Y轴（行）的尺寸
 let BOOM_COUNT;
 let CELL_SIZE; // 单元格大小
 
@@ -41,7 +42,6 @@ toggleFlagModeButton.textContent = '🚩 模式';
 toggleFlagModeButton.classList.add('mode-button'); // 复用样式
 toggleFlagModeButton.style.marginTop = '10px';
 // 在 game-page 中找到一个合适的位置插入按钮，例如在 game-info 下面
-// 假设 game-page 有一个 div#controls 或者直接在 game-info 后面
 const gameInfo = document.getElementById('game-info');
 if (gameInfo) { // 确保 game-info 存在
     gamePage.insertBefore(toggleFlagModeButton, gameInfo.nextSibling); // 插入到 game-info 后面
@@ -79,7 +79,11 @@ function showGamePage() {
 function startGame(modeName) {
     currentMode = MODES[modeName];
     currentMode.name = modeName; // 保存模式名称，用于重新开始
-    GRID_SIZE = currentMode.gridSize;
+
+    // 根据模式设置网格尺寸
+    GRID_SIZE_X = currentMode.gridSizeX;
+    GRID_SIZE_Y = currentMode.gridSizeY;
+    
     BOOM_COUNT = currentMode.bombCount;
     CELL_SIZE = currentMode.cellSize;
 
@@ -105,15 +109,15 @@ function initGame() {
     updateFlagCount();
 
     // 根据模式调整单元格大小和网格布局
-    gameContainer.style.gridTemplateColumns = `repeat(${GRID_SIZE}, ${CELL_SIZE}px)`;
-    gameContainer.style.width = `${GRID_SIZE * CELL_SIZE}px`; // 确保容器宽度正确
-    gameContainer.style.height = `${GRID_SIZE * CELL_SIZE}px`; // 确保容器高度正确
+    gameContainer.style.gridTemplateColumns = `repeat(${GRID_SIZE_X}, ${CELL_SIZE}px)`;
+    gameContainer.style.width = `${GRID_SIZE_X * CELL_SIZE}px`; // 确保容器宽度正确
+    gameContainer.style.height = `${GRID_SIZE_Y * CELL_SIZE}px`; // 确保容器高度正确
 
 
     // 创建空的网格
-    for (let i = 0; i < GRID_SIZE; i++) {
+    for (let i = 0; i < GRID_SIZE_Y; i++) { // 行数由GRID_SIZE_Y决定
         board[i] = [];
-        for (let j = 0; j < GRID_SIZE; j++) {
+        for (let j = 0; j < GRID_SIZE_X; j++) { // 列数由GRID_SIZE_X决定
             board[i][j] = {
                 isBomb: false,
                 isRevealed: false,
@@ -143,8 +147,8 @@ function initGame() {
 function placeBombs() {
     let bombsPlaced = 0;
     while (bombsPlaced < BOOM_COUNT) {
-        const row = Math.floor(Math.random() * GRID_SIZE);
-        const col = Math.floor(Math.random() * GRID_SIZE);
+        const row = Math.floor(Math.random() * GRID_SIZE_Y); // 注意这里是GRID_SIZE_Y
+        const col = Math.floor(Math.random() * GRID_SIZE_X); // 注意这里是GRID_SIZE_X
 
         if (!board[row][col].isBomb) {
             board[row][col].isBomb = true;
@@ -155,8 +159,8 @@ function placeBombs() {
 
 // 计算周围雷数
 function calculateNeighborBombs() {
-    for (let i = 0; i < GRID_SIZE; i++) {
-        for (let j = 0; j < GRID_SIZE; j++) {
+    for (let i = 0; i < GRID_SIZE_Y; i++) { // 行
+        for (let j = 0; j < GRID_SIZE_X; j++) { // 列
             if (!board[i][j].isBomb) {
                 let count = 0;
                 for (let dr = -1; dr <= 1; dr++) {
@@ -166,7 +170,7 @@ function calculateNeighborBombs() {
                         const newRow = i + dr;
                         const newCol = j + dc;
 
-                        if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE) {
+                        if (newRow >= 0 && newRow < GRID_SIZE_Y && newCol >= 0 && newCol < GRID_SIZE_X) { // 检查边界
                             if (board[newRow][newCol].isBomb) {
                                 count++;
                             }
@@ -275,7 +279,9 @@ function revealCell(row, col) {
     }
 
     const cell = board[row][col];
-    const cellElement = gameContainer.children[row * GRID_SIZE + col];
+    // 根据row和col计算一维数组的索引
+    const cellIndex = row * GRID_SIZE_X + col;
+    const cellElement = gameContainer.children[cellIndex]; 
 
     cell.isRevealed = true;
     cellElement.classList.add('revealed');
@@ -305,7 +311,7 @@ function revealCell(row, col) {
                 const newRow = row + dr;
                 const newCol = col + dc;
 
-                if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE) {
+                if (newRow >= 0 && newRow < GRID_SIZE_Y && newCol >= 0 && newCol < GRID_SIZE_X) { // 检查边界
                     revealCell(newRow, newCol); // 递归揭示
                 }
             }
@@ -321,7 +327,8 @@ function toggleFlag(row, col) {
     }
 
     const cell = board[row][col];
-    const cellElement = gameContainer.children[row * GRID_SIZE + col];
+    const cellIndex = row * GRID_SIZE_X + col; // 索引计算
+    const cellElement = gameContainer.children[cellIndex];
 
     cell.isFlagged = !cell.isFlagged;
 
@@ -352,7 +359,7 @@ function toggleFlag(row, col) {
 // 检查胜利条件
 function checkWinCondition() {
     // 胜利条件1：所有非雷单元格都被揭示
-    const totalSafeCells = (GRID_SIZE * GRID_SIZE) - BOOM_COUNT;
+    const totalSafeCells = (GRID_SIZE_X * GRID_SIZE_Y) - BOOM_COUNT; // 修正总单元格数计算
     const allSafeCellsRevealed = (revealedCells === totalSafeCells);
 
     if (allSafeCellsRevealed) {
@@ -384,10 +391,11 @@ function endGame(win) {
 
 // 揭示所有雷
 function revealAllBombs() {
-    for (let i = 0; i < GRID_SIZE; i++) {
-        for (let j = 0; j < GRID_SIZE; j++) {
+    for (let i = 0; i < GRID_SIZE_Y; i++) { // 行
+        for (let j = 0; j < GRID_SIZE_X; j++) { // 列
             const cell = board[i][j];
-            const cellElement = gameContainer.children[i * GRID_SIZE + j];
+            const cellIndex = i * GRID_SIZE_X + j; // 索引计算
+            const cellElement = gameContainer.children[cellIndex];
 
             if (cell.isBomb && !cell.isFlagged && !cell.isRevealed) { // 是雷，但未被标记且未被揭示
                 cellElement.textContent = '💣';
